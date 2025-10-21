@@ -6,6 +6,8 @@ Você pode precisar montar um banco de dados para realizar a atividade. Para iss
 
 Este é um projeto simples, criado como material de apoio para a aula, com o objetivo de demonstrar uma funcionalidade essencial no desenvolvimento de software: **conectar uma aplicação a um banco de dados e inserir informações**.
 
+Importante, os passos de como executar de fim a fim, serão realizados em sala de aulas.
+
 ---
 
 ### O Que Este Projeto Faz?
