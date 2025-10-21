@@ -8,6 +8,8 @@ Este é um projeto simples, criado como material de apoio para a aula, com o obj
 
 Importante, os passos de como executar de fim a fim, serão realizados em sala de aulas.
 
+<img width="1240" height="677" alt="image" src="https://github.com/user-attachments/assets/74b13711-87cc-4b2f-9077-c5a6c5478079" />
+
 ---
 
 ### O Que Este Projeto Faz?
