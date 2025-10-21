@@ -21,6 +21,8 @@ A funcionalidade do script é muito direta:
 3.  **Executa um comando SQL `INSERT`** para salvar esses dados em uma tabela chamada `pessoas`.
 4.  **Encerra a conexão** de forma segura.
 
+<img width="1586" height="897" alt="image" src="https://github.com/user-attachments/assets/5aee0574-e544-4094-8765-80e5b86c0a87" />
+
 ---
 
 ### ⚠️ Aviso de Segurança Importante: Credenciais no Código
