@@ -2,6 +2,8 @@
 
 Olá, alunos do professor Eduardo Popovici!
 
+Você pode precisar montar um banco de dados para realizar a atividade. Para isso utilize a postagem pela URL https://www.eduardopopovici.com/2025/09/como-montar-um-conteiner-com-postgre.html 
+
 Este é um projeto simples, criado como material de apoio para a aula, com o objetivo de demonstrar uma funcionalidade essencial no desenvolvimento de software: **conectar uma aplicação a um banco de dados e inserir informações**.
 
 ---
@@ -88,7 +90,13 @@ Siga os passos abaixo no terminal, dentro da pasta do projeto.
     ```bash
     node dist/ExercicioBancoDeDados.js
     ```
+<img width="1913" height="1017" alt="image" src="https://github.com/user-attachments/assets/3cdfb7a7-cec9-4bac-b12e-a5d4fd5b7b5b" />
 
 Ao executar o último comando, o terminal irá fazer as perguntas. Após respondê-las, verifique no pgAdmin se os novos dados apareceram na sua tabela `pessoas`!
+
+Quando acessar o banco de dados, será possível validar se houve a escrita ou não.
+
+<img width="1903" height="1018" alt="image" src="https://github.com/user-attachments/assets/48e94be0-8ee9-46c2-acbc-e5a2a87911fb" />
+
 
 Bons estudos!
