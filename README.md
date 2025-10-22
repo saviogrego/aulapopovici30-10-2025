@@ -25,6 +25,17 @@ A funcionalidade do script é muito direta:
 
 <img width="1586" height="897" alt="image" src="https://github.com/user-attachments/assets/5aee0574-e544-4094-8765-80e5b86c0a87" />
 
+### Quais ferramentas você vai precisar?
+
+1. VSCode
+2. Docker
+3. PGAdmin
+4. Typescript - NodeJS
+5. GitBash
+
+<img width="1916" height="1018" alt="image" src="https://github.com/user-attachments/assets/149ff003-802f-4ba5-8020-f6de3d902db4" />
+
+
 ---
 
 ### ⚠️ Aviso de Segurança Importante: Credenciais no Código
