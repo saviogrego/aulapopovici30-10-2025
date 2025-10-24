@@ -1,9 +1,9 @@
-// Usando a sintaxe CommonJS 'require' que é 100% compatível
-const { Pool } = require('pg');
-const readlineSync = require('readline-sync');
+// Usando a sintaxe 'import' recomendada para módulos modernos em TypeScript
+import { Pool } from 'pg';
+import * as readlineSync from 'readline-sync'; // Importa todas as funções sob um alias
 
-// Nunca use senha e usuario nos codgos - este é apenas um exemplo de aulas
-// No mundo real isso é uma baita vulnerabilidade
+// --- CONFIGURAÇÃO DO BANCO DE DADOS ---
+// Tipagem explícita da configuração do banco de dados
 const dbConfig = {
     user: 'aluno',
     host: 'localhost',
@@ -14,44 +14,102 @@ const dbConfig = {
 
 const pool = new Pool(dbConfig);
 
-async function inserirDados() {
-    console.log("--- Cadastro de Novo Aluno ---");
 
-    const nome = readlineSync.question('Digite o nome: ');
-    const idade = readlineSync.questionInt('Digite a idade: ');
-    const dataNasc = readlineSync.question('Digite a data de nascimento (formato AAAA-MM-DD): ');
+/**
+ * Função utilitária para coletar 8 notas e calcular a média.
+ * * @param materia - Nome da matéria para exibição (string).
+ * @returns A média das 8 notas (number).
+ */
+// CORREÇÃO: Declarando o tipo 'string' para o parâmetro 'materia' e ': number' para o retorno.
+function calcularMedia(materia: string): number {
+    console.log(`\n--- Notas de ${materia} ---`);
+    
+    // Boa prática: Tipar as variáveis
+    let notas: number[] = []; 
+    let soma: number = 0;
 
-    if (!nome || !idade || !dataNasc) {
-        console.error("Erro: Todos os campos são obrigatórios! Operação cancelada.");
+    for (let i = 1; i <= 8; i++) {
+        // questionFloat retorna um number ou NaN
+        let nota: number = readlineSync.questionFloat(`Digite a nota ${i} (${materia}): `); 
+        
+        // Validação básica
+        if (isNaN(nota) || nota < 0 || nota > 10) {
+            console.error("Nota inválida. Digite novamente.");
+            i--; 
+            continue;
+        }
+        notas.push(nota);
+        soma += nota;
+    }
+
+    const media: number = soma / 8;
+    // Retorna a média arredondada para duas casas decimais
+    return parseFloat(media.toFixed(2));
+}
+
+
+async function inserirDadosComMedia(): Promise<void> { // Usando Promise<void> para tipar o retorno assíncrono
+    console.log("==================================================");
+    console.log("          API de Cadastro e Cálculo de Médias     ");
+    console.log("==================================================");
+
+    // 1. Coleta dos Dados Básicos
+    const nome: string = readlineSync.question('Nome do aluno: ');
+    const idade: number = readlineSync.questionInt('Idade: ');
+    const serie: string = readlineSync.question('Série: ');
+
+    if (!nome || !idade || !serie) {
+        console.error("\nErro: Nome, Idade e Série são obrigatórios! Operação cancelada.");
         await pool.end();
         return;
     }
 
+    // 2. Coleta das Notas e Cálculo das Médias
+    const mediaMatematica: number = calcularMedia('Matemática');
+    const mediaGeografia: number = calcularMedia('Geografia');
+    
+    // CORREÇÃO DE BUG (Typo): A função estava sendo chamada com 'calcularMediaMedia'
+    // Garantindo que seja 'calcularMedia'
+    const mediaHistoria: number = calcularMedia('História'); 
+
+    console.log("\n--- Resultados dos Cálculos ---");
+    console.log(`Média de Matemática: ${mediaMatematica}`);
+    console.log(`Média de Geografia: ${mediaGeografia}`);
+    console.log(`Média de História: ${mediaHistoria}`);
+    
+    // 3. Inserção no Banco de Dados
     try {
         console.log("\nConectando ao banco de dados...");
         const client = await pool.connect();
         console.log("Conexão bem-sucedida! Inserindo dados...");
 
-        const insertQuery = `
-            INSERT INTO public.pessoas (nome, idade, data_nasc)
-            VALUES ($1, $2, $3)
+        const insertQuery: string = `
+            INSERT INTO public.alunos (nome, idade, serie, media_mat, media_geo, media_hist)
+            VALUES ($1, $2, $3, $4, $5, $6)
         `;
-        const values = [nome, idade, dataNasc];
+        const values: (string | number)[] = [ // Tipando explicitamente o array de valores
+            nome, 
+            idade, 
+            serie, 
+            mediaMatematica, 
+            mediaGeografia, 
+            mediaHistoria
+        ];
 
         await client.query(insertQuery, values);
         client.release();
 
-        console.log("-----------------------------------------");
-        console.log(`Dados inseridos com sucesso!`);
-        console.log(`Nome: ${nome}, Idade: ${idade}, Nascimento: ${dataNasc}`);
-        console.log("-----------------------------------------");
+        console.log("\n==================================================");
+        console.log(` Dados do aluno inseridos com sucesso!`);
+        console.log("==================================================");
 
     } catch (error) {
-        console.error("Ocorreu um erro ao interagir com o banco de dados:", error);
+        // É comum em TS checar se o erro é um objeto Error
+        console.error("\n Ocorreu um erro ao interagir com o banco de dados:", (error as Error).message);
     } finally {
         await pool.end();
         console.log("Conexão com o banco de dados encerrada.");
     }
 }
 
-inserirDados();
+inserirDadosComMedia();
