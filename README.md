@@ -1,3 +1,7 @@
+//feito por:
+// Sávio grego - RA: 2510472
+// Gabriel de Oliveira - RA: 2507887
+
 --API de Quiz de Perguntas e Respostas
 
 Este projeto é uma API em Node.js com TypeScript que se conecta a um banco de dados PostgreSQL. O objetivo principal é simular um quiz de perguntas, permitindo cadastrar perguntas com alternativas, executar o quiz via terminal e registrar os resultados dos usuários no banco de dados.
