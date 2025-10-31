@@ -1,115 +1,182 @@
-// Usando a sintaxe 'import' recomendada para módulos modernos em TypeScript
-import { Pool } from 'pg';
-import * as readlineSync from 'readline-sync'; // Importa todas as funções sob um alias
+// src/quiz.ts
+import { Pool } from "pg";
+import * as readlineSync from "readline-sync";
 
 // --- CONFIGURAÇÃO DO BANCO DE DADOS ---
-// Tipagem explícita da configuração do banco de dados
-const dbConfig = {
-    user: 'aluno',
-    host: 'localhost',
-    database: 'db_profedu',
-    password: '102030',
-    port: 5432,
-};
+const pool = new Pool({
+  user: "aluno",
+  host: "localhost",
+  database: "db_profedu",
+  password: "102030",
+  port: 5432,
+});
 
-const pool = new Pool(dbConfig);
+// --- FUNÇÃO PARA CADASTRAR PERGUNTAS ---
+async function cadastrarPergunta(): Promise<void> {
+  const texto = readlineSync.question("Digite o texto da pergunta: ");
+  if (!texto.trim()) {
+    console.log("Texto inválido. Operação cancelada.");
+    return;
+  }
 
+  const alternativas: { texto: string; correta: boolean }[] = [];
+  console.log("Cadastre as 3 alternativas:");
 
-/**
- * Função utilitária para coletar 8 notas e calcular a média.
- * * @param materia - Nome da matéria para exibição (string).
- * @returns A média das 8 notas (number).
- */
-// CORREÇÃO: Declarando o tipo 'string' para o parâmetro 'materia' e ': number' para o retorno.
-function calcularMedia(materia: string): number {
-    console.log(`\n--- Notas de ${materia} ---`);
-    
-    // Boa prática: Tipar as variáveis
-    let notas: number[] = []; 
-    let soma: number = 0;
+  for (let i = 1; i <= 3; i++) {
+    const textoAlt = readlineSync.question(`Alternativa ${i}: `);
+    alternativas.push({ texto: textoAlt, correta: false });
+  }
 
-    for (let i = 1; i <= 8; i++) {
-        // questionFloat retorna um number ou NaN
-        let nota: number = readlineSync.questionFloat(`Digite a nota ${i} (${materia}): `); 
-        
-        // Validação básica
-        if (isNaN(nota) || nota < 0 || nota > 10) {
-            console.error("Nota inválida. Digite novamente.");
-            i--; 
-            continue;
-        }
-        notas.push(nota);
-        soma += nota;
+  let correta = readlineSync.questionInt("Qual alternativa é a correta? (1, 2 ou 3): ");
+  while (![1, 2, 3].includes(correta)) {
+    correta = readlineSync.questionInt("Digite 1, 2 ou 3 para indicar a correta: ");
+  }
+  alternativas[correta - 1].correta = true;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const res = await client.query(
+      "INSERT INTO perguntas (texto) VALUES ($1) RETURNING id",
+      [texto]
+    );
+    const perguntaId = res.rows[0].id;
+
+    for (const alt of alternativas) {
+      await client.query(
+        "INSERT INTO alternativas (pergunta_id, texto, correta) VALUES ($1, $2, $3)",
+        [perguntaId, alt.texto, alt.correta]
+      );
     }
 
-    const media: number = soma / 8;
-    // Retorna a média arredondada para duas casas decimais
-    return parseFloat(media.toFixed(2));
+    await client.query("COMMIT");
+    console.log("Pergunta cadastrada com sucesso!");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Erro ao cadastrar pergunta:", (err as Error).message);
+  } finally {
+    client.release();
+  }
 }
 
+// --- FUNÇÃO PARA EXECUTAR O QUIZ ---
+async function executarQuiz(): Promise<void> {
+  const perguntasRes = await pool.query(
+    `SELECT p.id, p.texto, 
+            json_agg(json_build_object('id', a.id, 'texto', a.texto)) AS alternativas
+     FROM perguntas p
+     JOIN alternativas a ON a.pergunta_id = p.id
+     GROUP BY p.id
+     ORDER BY p.id`
+  );
 
-async function inserirDadosComMedia(): Promise<void> { // Usando Promise<void> para tipar o retorno assíncrono
-    console.log("==================================================");
-    console.log("          API de Cadastro e Cálculo de Médias     ");
-    console.log("==================================================");
+  const perguntas = perguntasRes.rows;
+  if (perguntas.length === 0) {
+    console.log("Nenhuma pergunta cadastrada.");
+    return;
+  }
 
-    // 1. Coleta dos Dados Básicos
-    const nome: string = readlineSync.question('Nome do aluno: ');
-    const idade: number = readlineSync.questionInt('Idade: ');
-    const serie: string = readlineSync.question('Série: ');
+  console.log(`\n--- Iniciando o quiz (${perguntas.length} perguntas) ---\n`);
 
-    if (!nome || !idade || !serie) {
-        console.error("\nErro: Nome, Idade e Série são obrigatórios! Operação cancelada.");
-        await pool.end();
-        return;
+  let acertos = 0;
+  const client = await pool.connect();
+
+  try {
+    for (const p of perguntas) {
+      console.log(`Pergunta ${p.id}: ${p.texto}`);
+      p.alternativas.forEach((a: any, i: number) =>
+        console.log(`  ${i + 1}) ${a.texto}`)
+      );
+
+      let escolha = readlineSync.questionInt("Escolha (1, 2 ou 3): ");
+      while (![1, 2, 3].includes(escolha)) {
+        escolha = readlineSync.questionInt("Escolha inválida. Digite 1, 2 ou 3: ");
+      }
+
+      const alternativaEscolhida = p.alternativas[escolha - 1];
+      const verif = await client.query(
+        "SELECT correta FROM alternativas WHERE id = $1",
+        [alternativaEscolhida.id]
+      );
+
+      if (verif.rows[0].correta) {
+        acertos++;
+      }
+      console.log("");
     }
 
-    // 2. Coleta das Notas e Cálculo das Médias
-    const mediaMatematica: number = calcularMedia('Matemática');
-    const mediaGeografia: number = calcularMedia('Geografia');
-    
-    // CORREÇÃO DE BUG (Typo): A função estava sendo chamada com 'calcularMediaMedia'
-    // Garantindo que seja 'calcularMedia'
-    const mediaHistoria: number = calcularMedia('História'); 
-
-    console.log("\n--- Resultados dos Cálculos ---");
-    console.log(`Média de Matemática: ${mediaMatematica}`);
-    console.log(`Média de Geografia: ${mediaGeografia}`);
-    console.log(`Média de História: ${mediaHistoria}`);
-    
-    // 3. Inserção no Banco de Dados
-    try {
-        console.log("\nConectando ao banco de dados...");
-        const client = await pool.connect();
-        console.log("Conexão bem-sucedida! Inserindo dados...");
-
-        const insertQuery: string = `
-            INSERT INTO public.alunos (nome, idade, serie, media_mat, media_geo, media_hist)
-            VALUES ($1, $2, $3, $4, $5, $6)
-        `;
-        const values: (string | number)[] = [ // Tipando explicitamente o array de valores
-            nome, 
-            idade, 
-            serie, 
-            mediaMatematica, 
-            mediaGeografia, 
-            mediaHistoria
-        ];
-
-        await client.query(insertQuery, values);
-        client.release();
-
-        console.log("\n==================================================");
-        console.log(` Dados do aluno inseridos com sucesso!`);
-        console.log("==================================================");
-
-    } catch (error) {
-        // É comum em TS checar se o erro é um objeto Error
-        console.error("\n Ocorreu um erro ao interagir com o banco de dados:", (error as Error).message);
-    } finally {
-        await pool.end();
-        console.log("Conexão com o banco de dados encerrada.");
+    const nome = readlineSync.question("Digite seu nome: ");
+    if (!nome.trim()) {
+      console.log("Nome inválido. Resultado não salvo.");
+      return;
     }
+
+    await client.query("BEGIN");
+    const usuarioRes = await client.query(
+      "INSERT INTO usuarios (nome) VALUES ($1) RETURNING id",
+      [nome]
+    );
+    const usuarioId = usuarioRes.rows[0].id;
+
+    await client.query(
+      "INSERT INTO resultados (usuario_id, pontuacao) VALUES ($1, $2)",
+      [usuarioId, acertos]
+    );
+    await client.query("COMMIT");
+
+    console.log(`\n ${nome}, você acertou ${acertos}/${perguntas.length} perguntas.\n`);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Erro durante o quiz:", (err as Error).message);
+  } finally {
+    client.release();
+  }
 }
 
-inserirDadosComMedia();
+// --- CONSULTAR USUÁRIOS E RESULTADOS ---
+async function listarUsuarios(): Promise<void> {
+  const res = await pool.query(
+    `SELECT u.id, u.nome, r.pontuacao, r.criado_em
+     FROM usuarios u
+     JOIN resultados r ON r.usuario_id = u.id
+     ORDER BY u.id`
+  );
+
+  console.log("\n=== Usuários e Pontuações ===");
+  if (res.rowCount === 0) {
+    console.log("Nenhum usuário registrado ainda.");
+    return;
+  }
+
+  res.rows.forEach((row) => {
+    console.log(
+      `ID: ${row.id} | Nome: ${row.nome} | Pontuação: ${row.pontuacao} | Data: ${new Date(
+        row.criado_em
+      ).toLocaleString()}`
+    );
+  });
+}
+
+// --- MENU PRINCIPAL ---
+async function menu(): Promise<void> {
+  while (true) {
+    console.log("\n=== MENU ===");
+    console.log("1) Cadastrar pergunta");
+    console.log("2) Executar quiz");
+    console.log("3) Listar usuários e pontuações");
+    console.log("0) Sair");
+
+    const opcao = readlineSync.questionInt("Escolha uma opção: ");
+    if (opcao === 1) await cadastrarPergunta();
+    else if (opcao === 2) await executarQuiz();
+    else if (opcao === 3) await listarUsuarios();
+    else if (opcao === 0) break;
+    else console.log("Opção inválida.");
+  }
+
+  await pool.end();
+  console.log("Conexão encerrada.");
+}
+
+menu();
