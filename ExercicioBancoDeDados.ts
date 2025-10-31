@@ -1,3 +1,9 @@
+//feito por:
+// Sávio grego - RA: 2510472
+// Gabriel de Oliveira - RA: 2507887
+
+
+
 // src/quiz.ts
 import { Pool } from "pg";
 import * as readlineSync from "readline-sync";
